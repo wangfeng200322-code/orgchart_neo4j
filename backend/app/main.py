@@ -2,9 +2,11 @@ import json
 import boto3
 import io
 import csv
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from typing import List, Optional
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from neo4j import GraphDatabase
 from tenacity import retry, stop_after_attempt, wait_exponential
 from loguru import logger
@@ -15,13 +17,55 @@ logger.remove()  # Remove default handler
 logger.add(sys.stdout, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | {message}")
 logger.add("app.log", rotation="500 MB", format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}")
 
-app = FastAPI(title="OrgChart API")
+app = FastAPI(
+    title="OrgChart API",
+    description="API for managing organizational chart data using Neo4j",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {"name": "health", "description": "Health check endpoints"},
+        {"name": "employees", "description": "Employee data management endpoints"},
+    ]
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class HealthResponse(BaseModel):
+    status: str = Field(..., example="healthy", description="Current health status of the API")
+    database: dict = Field(..., example={
+        "connected": True,
+        "name": "neo4j",
+        "version": "5.7.0",
+        "edition": "aura"
+    }, description="Neo4j database connection details")
+
+class UploadResponse(BaseModel):
+    status: str = Field(..., example="ok", description="Upload operation status")
+    imported: int = Field(..., example=5, description="Number of employees imported")
+
+class Node(BaseModel):
+    id: int = Field(..., example=1234, description="Neo4j node ID")
+    fullName: str = Field(..., example="John Doe", description="Employee's full name")
+    firstName: Optional[str] = Field(None, example="John", description="Employee's first name")
+    lastName: Optional[str] = Field(None, example="Doe", description="Employee's last name")
+    email: Optional[str] = Field(None, example="john.doe@example.com", description="Employee's email")
+    phone: Optional[str] = Field(None, example="+1-555-123-4567", description="Employee's phone number")
+    address: Optional[str] = Field(None, example="123 Main St", description="Employee's address")
+
+class Link(BaseModel):
+    from_id: int = Field(..., example=1234, description="Source node ID")
+    to_id: int = Field(..., example=5678, description="Target node ID")
+    type: str = Field(..., example="MANAGES", description="Relationship type")
+
+class EmployeeResponse(BaseModel):
+    nodes: List[Node] = Field(..., description="List of employee nodes")
+    links: List[Link] = Field(..., description="List of relationships between employees")
 
 @retry(
     stop=stop_after_attempt(3),
@@ -81,19 +125,6 @@ class Neo4jConnection:
 
 neo4j_conn = Neo4jConnection()
 
-class NodeOut(BaseModel):
-    id: int
-    fullName: str
-    firstName: str | None = None
-    lastName: str | None = None
-    email: str | None = None
-    phone: str | None = None
-    address: str | None = None
-
-class LinkOut(BaseModel):
-    from_id: int
-    to_id: int
-
 @app.on_event("startup")
 async def startup():
     logger.info("Application starting up")
@@ -104,7 +135,9 @@ async def shutdown():
     logger.info("Application shutting down")
     neo4j_conn.close()
 
-@app.get('/health')
+@app.get('/health', response_model=HealthResponse, tags=["health"],
+         summary="Check API and database health",
+         description="Returns the health status of the API and Neo4j database connection.")
 async def health_check():
     try:
         # Test database connection
@@ -130,15 +163,20 @@ async def health_check():
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Health check failed: {str(e)}"
         )
 
-@app.post('/upload')
+@app.post('/upload', response_model=UploadResponse, tags=["employees"],
+          summary="Upload employee data CSV",
+          description="Upload a CSV file containing employee information. The file should include columns for First Name, Last Name, Email, Phone, Address, and Manager Name.")
 async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.endswith('.csv'):
         logger.warning(f"Invalid file type attempted: {file.filename}")
-        raise HTTPException(status_code=400, detail='CSV file required')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='CSV file required'
+        )
     
     try:
         content = await file.read()
@@ -182,11 +220,13 @@ async def upload_csv(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error processing CSV upload: {str(e)}")
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing upload: {str(e)}"
         )
 
-@app.get('/employee')
+@app.get('/employee', response_model=EmployeeResponse, tags=["employees"],
+         summary="Get employee org chart",
+         description="Retrieve an employee and their reporting structure by full name.")
 def get_employee(name: str = Query(..., description='Full name of employee to search')):
     try:
         logger.info(f"Searching for employee: {name}")
@@ -230,7 +270,11 @@ def get_employee(name: str = Query(..., description='Full name of employee to se
             for r in rels_raw:
                 start = r.start_node.id
                 end = r.end_node.id
-                links.append({'from': start, 'to': end, 'type': r.type})
+                links.append({
+                    'from_id': start,
+                    'to_id': end,
+                    'type': r.type
+                })
                 
             logger.info(f"Found {len(nodes)} nodes and {len(links)} relationships for {name}")
             return {'nodes': nodes, 'links': links}
@@ -238,7 +282,7 @@ def get_employee(name: str = Query(..., description='Full name of employee to se
     except Exception as e:
         logger.error(f"Error retrieving employee data: {str(e)}")
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving employee data: {str(e)}"
         )
 

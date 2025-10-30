@@ -6,3 +6,9 @@ pydantic
 boto3
 tenacity
 loguru
+pytest
+pytest-asyncio
+requests
+aiofiles
+httpx
+python-jose[cryptography]
