@@ -1,36 +1,52 @@
 # orgchart_neo4j
 
-Demo project: upload organization CSV data and display an org chart using Neo4j as a graph DB, a React frontend, and a Python FastAPI backend.
+Demo project: upload organization CSV data and display an org chart using Neo4j AuraDB, a React frontend, and a Python FastAPI backend.
 
 This repository contains:
 - `frontend/` — React (Vite) single-page app for upload and query UI.
 - `backend/` — FastAPI app to parse CSV, write to Neo4j, and expose query endpoints.
-- `docker-compose.yml` — to run Neo4j, backend and frontend locally or on an EC2 host.
-- `terraform/` — Terraform template to provision a single EC2 instance and run the docker-compose stack (demo/test use).
+- `docker-compose.yml` — to run backend and frontend locally.
+- `terraform/` — Terraform template to provision a t2.micro EC2 instance running the frontend and backend containers.
 
-Quick local run (requires Docker & docker-compose):
+## Prerequisites
 
-1. Copy example env: `cp backend/.env.example backend/.env`
+### Neo4j AuraDB Setup
+1. Create a free Neo4j AuraDB instance
+2. Note the connection details (URI, username, password)
+3. Create an AWS Systems Manager Parameter Store parameter named `neo4j_connection_json_string` with the following JSON structure:
+```json
+{
+    "NEO4J_URI": "neo4j+s://your-instance.databases.neo4j.io:7687",
+    "NEO4J_USER": "neo4j",
+    "NEO4J_PASSWORD": "your-password"
+}
+```
+
+### Local Development
+1. Create the SSM parameter as described above
 2. Start services: `docker compose up --build`
 3. Frontend: http://localhost:3000
 4. Backend API: http://localhost:8000
-5. Neo4j Browser: http://localhost:7474 (username/password from env)
 
-Architecture
-- Admin uploads CSV via frontend -> frontend POSTs to backend `/upload` -> backend parses CSV and MERGE nodes/relationships in Neo4j.
+### AWS Deployment
+1. Create the SSM parameter as described above
+2. Configure AWS credentials
+3. In `terraform/`:
+   ```bash
+   terraform init
+   terraform apply -var="key_name=your-key-pair-name"
+   ```
+4. The EC2 instance will automatically:
+   - Clone this repository
+   - Start the frontend and backend containers
+   - Backend will read Neo4j credentials from SSM parameter
+
+## Architecture
+- Admin uploads CSV via frontend -> frontend POSTs to backend `/upload` -> backend parses CSV and MERGE nodes/relationships in Neo4j AuraDB.
 - Normal user searches employee by name -> frontend fetches `/employee?name=` -> backend queries Neo4j and returns nodes/edges for rendering an org chart.
 
-Terraform
-- `terraform/` contains a simple example that creates an EC2 instance, sets up security group rules, and runs a user-data script which clones this repo and runs `docker compose up -d` on the instance.
-
 Notes
-- This repository provides a minimal, demo-friendly skeleton. For production deployments consider using ECS/Fargate, managed databases, and secure secret management.
-
-Next steps I can do for you:
-- Expand the frontend UI with a nicer org-chart library.
-- Add GitHub Actions to build and test the backend and frontend.
-- Harden Terraform to use proper state backends and modular design.
-
----
-
-Created by automation — adjust and extend as needed.
+- The EC2 instance is t2.micro as requested. This is sufficient for the frontend and backend containers.
+- Neo4j runs as a managed service in AuraDB.
+- The backend reads Neo4j credentials from AWS Systems Manager Parameter Store.
+- The parameter `neo4j_connection_json_string` must be created manually before deployment.

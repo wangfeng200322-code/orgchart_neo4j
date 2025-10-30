@@ -1,14 +1,9 @@
-import os
-import csv
-import io
+import json
+import boto3
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from neo4j import GraphDatabase
-
-NEO4J_URI = os.getenv('NEO4J_URI', 'bolt://localhost:7687')
-NEO4J_USER = os.getenv('NEO4J_USER', 'neo4j')
-NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD', 'letmein')
 
 app = FastAPI(title="OrgChart API")
 app.add_middleware(
@@ -18,7 +13,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Neo4j driver
+def get_neo4j_credentials():
+    ssm = boto3.client('ssm')
+    try:
+        parameter = ssm.get_parameter(
+            Name='neo4j_connection_json_string',
+            WithDecryption=True
+        )
+        credentials = json.loads(parameter['Parameter']['Value'])
+        return (
+            credentials.get('NEO4J_URI'),
+            credentials.get('NEO4J_USER'),
+            credentials.get('NEO4J_PASSWORD')
+        )
+    except Exception as e:
+        print(f"Error reading SSM parameter: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not retrieve database credentials"
+        )
+
+# Get Neo4j credentials and create driver
+NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD = get_neo4j_credentials()
 driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 class NodeOut(BaseModel):

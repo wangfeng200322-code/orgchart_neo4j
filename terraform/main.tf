@@ -11,6 +11,49 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
+# IAM role for EC2 to read SSM parameter
+resource "aws_iam_role" "ec2_role" {
+  name = "orgchart-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Policy to allow reading SSM parameter
+resource "aws_iam_role_policy" "ssm_policy" {
+  name = "orgchart-ssm-policy"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:${var.region}:*:parameter/neo4j_connection_json_string"
+      }
+    ]
+  })
+}
+
+# Instance profile
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "orgchart-ec2-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
 resource "aws_security_group" "allow_http" {
   name        = "orgchart-sg"
   description = "Allow HTTP and app ports"
@@ -39,18 +82,6 @@ resource "aws_security_group" "allow_http" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  ingress {
-    from_port   = 7474
-    to_port     = 7474
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 7687
-    to_port     = 7687
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   egress {
     from_port   = 0
@@ -64,6 +95,7 @@ resource "aws_instance" "app" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = var.instance_type
   key_name      = var.key_name
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
   security_groups = [aws_security_group.allow_http.name]
 
   user_data = <<-EOF

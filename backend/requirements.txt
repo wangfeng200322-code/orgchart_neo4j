@@ -3,3 +3,4 @@ uvicorn[standard]
 neo4j
 python-multipart
 pydantic
+boto3
