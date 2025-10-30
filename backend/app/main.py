@@ -37,13 +37,22 @@ app.add_middleware(
 )
 
 class HealthResponse(BaseModel):
-    status: str = Field(..., example="healthy", description="Current health status of the API")
-    database: dict = Field(..., example={
-        "connected": True,
-        "name": "neo4j",
-        "version": "5.7.0",
-        "edition": "aura"
-    }, description="Neo4j database connection details")
+    status: str = Field(..., description="Current health status of the API")
+    database: dict = Field(..., description="Neo4j database connection details")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "status": "healthy",
+                "database": {
+                    "connected": True,
+                    "name": "neo4j",
+                    "version": "5.7.0",
+                    "edition": "aura"
+                }
+            }]
+        }
+    }
 
 class UploadResponse(BaseModel):
     status: str = Field(..., example="ok", description="Upload operation status")
