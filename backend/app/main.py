@@ -2,6 +2,7 @@ import json
 import boto3
 import io
 import csv
+import os
 from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,26 +83,39 @@ class EmployeeResponse(BaseModel):
     reraise=True
 )
 def get_neo4j_credentials():
-    ssm = boto3.client('ssm')
-    try:
-        logger.info("Attempting to retrieve Neo4j credentials from SSM")
-        parameter = ssm.get_parameter(
-            Name='neo4j_connection_json_string',
-            WithDecryption=True
-        )
-        credentials = json.loads(parameter['Parameter']['Value'])
-        logger.info("Successfully retrieved Neo4j credentials")
+    # Check if we're running locally or in AWS
+    env = os.getenv("ENVIRONMENT", "aws")  # Default to AWS if not specified
+    
+    if env == "local":
+        # Use local environment variables
+        logger.info("Using local environment configuration")
         return (
-            credentials.get('NEO4J_URI'),
-            credentials.get('NEO4J_USER'),
-            credentials.get('NEO4J_PASSWORD')
+            os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
+            os.getenv('NEO4J_USER', 'neo4j'),
+            os.getenv('NEO4J_PASSWORD', 'password')
         )
-    except Exception as e:
-        logger.error(f"Error reading SSM parameter: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Could not retrieve database credentials"
-        )
+    else:
+        # Original AWS SSM implementation
+        ssm = boto3.client('ssm')
+        try:
+            logger.info("Attempting to retrieve Neo4j credentials from SSM")
+            parameter = ssm.get_parameter(
+                Name='neo4j_connection_json_string',
+                WithDecryption=True
+            )
+            credentials = json.loads(parameter['Parameter']['Value'])
+            logger.info("Successfully retrieved Neo4j credentials")
+            return (
+                credentials.get('NEO4J_URI'),
+                credentials.get('NEO4J_USER'),
+                credentials.get('NEO4J_PASSWORD')
+            )
+        except Exception as e:
+            logger.error(f"Error reading SSM parameter: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Could not retrieve database credentials"
+            )
 
 @retry(
     stop=stop_after_attempt(3),
@@ -109,22 +123,31 @@ def get_neo4j_credentials():
     reraise=True
 )
 def get_admin_api_key():
-    ssm = boto3.client('ssm')
-    try:
-        logger.info("Retrieving admin API key from SSM")
-        parameter = ssm.get_parameter(
-            Name='orgchart_admin_api_key',
-            WithDecryption=True
-        )
-        api_key = parameter['Parameter']['Value']
-        logger.info("Successfully retrieved admin API key")
-        return api_key
-    except Exception as e:
-        logger.error(f"Error reading admin API key from SSM: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Could not retrieve admin API key"
-        )
+    # Check if we're running locally or in AWS
+    env = os.getenv("ENVIRONMENT", "aws")  # Default to AWS if not specified
+    
+    if env == "local":
+        # Use local environment variable
+        logger.info("Using local API key configuration")
+        return os.getenv('ADMIN_API_KEY', 'local-api-key')
+    else:
+        # Original AWS SSM implementation
+        ssm = boto3.client('ssm')
+        try:
+            logger.info("Retrieving admin API key from SSM")
+            parameter = ssm.get_parameter(
+                Name='orgchart_admin_api_key',
+                WithDecryption=True
+            )
+            api_key = parameter['Parameter']['Value']
+            logger.info("Successfully retrieved admin API key")
+            return api_key
+        except Exception as e:
+            logger.error(f"Error reading admin API key from SSM: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Could not retrieve admin API key"
+            )
 
 class Neo4jConnection:
     def __init__(self):
