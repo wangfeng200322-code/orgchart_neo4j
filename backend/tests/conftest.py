@@ -5,8 +5,11 @@ import json
 from unittest.mock import patch, MagicMock
 
 @pytest.fixture
-def test_client():
-    return TestClient(app)
+def test_client(mock_neo4j_driver, mock_neo4j_credentials):
+    # Ensure Neo4j driver and SSM credentials are mocked before the app starts up
+    # Use TestClient as a context manager so startup/shutdown run for each test
+    with TestClient(app) as client:
+        yield client
 
 @pytest.fixture
 def mock_neo4j_credentials():

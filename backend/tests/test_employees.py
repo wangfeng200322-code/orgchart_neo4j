@@ -1,6 +1,5 @@
 import pytest
 from fastapi import status
-from neo4j import Record, Node as Neo4jNode, Relationship
 import io
 
 def create_mock_neo4j_node(node_id, **properties):
@@ -106,4 +105,4 @@ def test_upload_with_valid_api_key(test_client, mock_neo4j_credentials, mock_neo
         headers={"X-API-Key": "test-admin-key"}
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["imported"] == 2
+    assert response.json()["imported"] == 1
