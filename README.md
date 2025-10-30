@@ -22,6 +22,11 @@ This repository contains:
 }
 ```
 
+Create admin API key parameter in SSM (SecureString):
+```powershell
+aws ssm put-parameter --name "orgchart_admin_api_key" --value "<strong-random-key>" --type "SecureString" --region eu-central-1
+```
+
 ### Local Development
 1. Create the SSM parameter as described above
 2. Start services: `docker compose up --build`
@@ -36,7 +41,7 @@ This repository contains:
 - Use this to verify Neo4j connectivity
 
 #### Upload Organization Data
-- POST `/upload`
+- POST `/upload` — requires admin API key in header `X-API-Key`
 - Accepts CSV file with columns:
   - First Name
   - Last Name
@@ -49,18 +54,13 @@ This repository contains:
 - GET `/employee?name=<full name>`
 - Returns employee and their reporting structure
 
-### AWS Deployment
-1. Create the SSM parameter as described above
-2. Configure AWS credentials
-3. In `terraform/`:
-   ```bash
-   terraform init
-   terraform apply -var="key_name=your-key-pair-name"
-   ```
-4. The EC2 instance will automatically:
-   - Clone this repository
-   - Start the frontend and backend containers
-   - Backend will read Neo4j credentials from SSM parameter
+### CI
+A GitHub Actions workflow is included at `.github/workflows/ci.yml`. It runs backend tests and builds the frontend on every push to `main` and on pull requests.
+
+### Key rotation
+Two helper scripts are provided in `scripts/`:
+- `create_admin_api_key.py` — generate a new admin key and optionally store in SSM
+- `rotate_admin_api_key.py` — rotate the key (overwrite existing SSM parameter)
 
 ## Architecture
 - Admin uploads CSV via frontend -> frontend POSTs to backend `/upload` -> backend parses CSV and MERGE nodes/relationships in Neo4j AuraDB.
@@ -85,8 +85,11 @@ This repository contains:
    - Console and file output
    - Error tracking for all operations
 
+4. **Admin API key protection**
+   - Upload endpoint requires header `X-API-Key` matching the SSM SecureString `orgchart_admin_api_key`.
+
 Notes
 - The EC2 instance is t2.micro as requested. This is sufficient for the frontend and backend containers.
 - Neo4j runs as a managed service in AuraDB.
-- The backend reads Neo4j credentials from AWS Systems Manager Parameter Store.
-- The parameter `neo4j_connection_json_string` must be created manually before deployment.
+- The backend reads Neo4j credentials and admin API key from AWS Systems Manager Parameter Store.
+- The parameters must be created manually before deployment.
