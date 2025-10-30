@@ -4,3 +4,5 @@ neo4j
 python-multipart
 pydantic
 boto3
+tenacity
+loguru

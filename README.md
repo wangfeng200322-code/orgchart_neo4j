@@ -28,6 +28,27 @@ This repository contains:
 3. Frontend: http://localhost:3000
 4. Backend API: http://localhost:8000
 
+### API Endpoints
+
+#### Health Check
+- GET `/health`
+- Returns database connection status and version information
+- Use this to verify Neo4j connectivity
+
+#### Upload Organization Data
+- POST `/upload`
+- Accepts CSV file with columns:
+  - First Name
+  - Last Name
+  - Email
+  - Phone
+  - Address
+  - Manager Name
+
+#### Query Employee
+- GET `/employee?name=<full name>`
+- Returns employee and their reporting structure
+
 ### AWS Deployment
 1. Create the SSM parameter as described above
 2. Configure AWS credentials
@@ -44,6 +65,25 @@ This repository contains:
 ## Architecture
 - Admin uploads CSV via frontend -> frontend POSTs to backend `/upload` -> backend parses CSV and MERGE nodes/relationships in Neo4j AuraDB.
 - Normal user searches employee by name -> frontend fetches `/employee?name=` -> backend queries Neo4j and returns nodes/edges for rendering an org chart.
+
+## Features
+
+### Backend Improvements
+1. **Retry Logic**
+   - Automatic retries for SSM parameter retrieval
+   - Exponential backoff between attempts
+   - Maximum of 3 retry attempts
+
+2. **Health Monitoring**
+   - `/health` endpoint for monitoring
+   - Checks Neo4j connection
+   - Returns database version and status
+
+3. **Logging**
+   - Structured logging with timestamps
+   - Log rotation (500 MB files)
+   - Console and file output
+   - Error tracking for all operations
 
 Notes
 - The EC2 instance is t2.micro as requested. This is sufficient for the frontend and backend containers.
