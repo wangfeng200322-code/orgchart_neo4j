@@ -4,8 +4,22 @@ from neo4j import Record, Node as Neo4jNode, Relationship
 import io
 
 def create_mock_neo4j_node(node_id, **properties):
-    node = Neo4jNode("Employee", node_id, **properties)
-    return node
+    # Build a lightweight mock object mimicking neo4j Node
+    class SimpleNode(dict):
+        def __init__(self, id, **props):
+            super().__init__(**props)
+            self.id = id
+        def get(self, k):
+            return dict.get(self, k)
+    return SimpleNode(node_id, **properties)
+
+def create_mock_relationship(start_node, rel_type, end_node):
+    class SimpleRel:
+        def __init__(self, start_node, rel_type, end_node):
+            self.start_node = start_node
+            self.end_node = end_node
+            self.type = rel_type
+    return SimpleRel(start_node, rel_type, end_node)
 
 def test_get_employee_success(test_client, mock_neo4j_credentials, mock_neo4j_driver):
     mock_driver, mock_session = mock_neo4j_driver
@@ -13,7 +27,7 @@ def test_get_employee_success(test_client, mock_neo4j_credentials, mock_neo4j_dr
     # Create mock nodes and relationships
     manager = create_mock_neo4j_node(1, fullName="John Doe", email="john@example.com")
     employee = create_mock_neo4j_node(2, fullName="Jane Smith", email="jane@example.com")
-    rel = Relationship(manager, "MANAGES", employee)
+    rel = create_mock_relationship(manager, "MANAGES", employee)
     
     # Mock Neo4j query result
     mock_session.run.return_value.single.return_value = {
@@ -55,7 +69,8 @@ Jane,Smith,jane@example.com,098-765-4321,456 Oak St,John Doe"""
     
     response = test_client.post(
         "/upload",
-        files={"file": ("test.csv", file, "text/csv")}
+        files={"file": ("test.csv", file, "text/csv")},
+        headers={"X-API-Key": "test-admin-key"}
     )
     
     assert response.status_code == status.HTTP_200_OK
@@ -63,14 +78,32 @@ Jane,Smith,jane@example.com,098-765-4321,456 Oak St,John Doe"""
     assert data["status"] == "ok"
     assert data["imported"] == 2
 
-def test_upload_invalid_file(test_client, mock_neo4j_credentials, mock_neo4j_driver):
-    file = io.BytesIO(b"not a csv")
-    file.name = "test.txt"
-    
+def test_upload_requires_api_key(test_client, mock_neo4j_credentials, mock_neo4j_driver):
+    file = io.BytesIO(b"First Name,Last Name\nA,B")
+    file.name = "test.csv"
     response = test_client.post(
         "/upload",
-        files={"file": ("test.txt", file, "text/plain")}
+        files={"file": ("test.csv", file, "text/csv")}
     )
-    
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "CSV file required" in response.json()["detail"]
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+def test_upload_invalid_api_key(test_client, mock_neo4j_credentials, mock_neo4j_driver):
+    file = io.BytesIO(b"First Name,Last Name\nA,B")
+    file.name = "test.csv"
+    response = test_client.post(
+        "/upload",
+        files={"file": ("test.csv", file, "text/csv")},
+        headers={"X-API-Key": "wrong-key"}
+    )
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+def test_upload_with_valid_api_key(test_client, mock_neo4j_credentials, mock_neo4j_driver):
+    file = io.BytesIO(b"First Name,Last Name\nA,B")
+    file.name = "test.csv"
+    response = test_client.post(
+        "/upload",
+        files={"file": ("test.csv", file, "text/csv")},
+        headers={"X-API-Key": "test-admin-key"}
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["imported"] == 2

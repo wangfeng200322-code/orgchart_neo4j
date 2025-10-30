@@ -1,6 +1,7 @@
 import React, {useState} from 'react'
 import UploadForm from './components/UploadForm'
 import SearchForm from './components/SearchForm'
+import AdminKeyForm from './components/AdminKeyForm'
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:8000'
 
@@ -9,6 +10,7 @@ export default function App(){
   return (
     <div style={{padding: 20}}>
       <h1>OrgChart Demo</h1>
+      <AdminKeyForm />
       <UploadForm apiUrl={API} />
       <hr />
       <SearchForm apiUrl={API} onResult={setData} />

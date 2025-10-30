@@ -8,7 +8,9 @@ export default function UploadForm({apiUrl}){
     if(!file) return setMsg('Choose a CSV file')
     const fd = new FormData()
     fd.append('file', file)
-    const res = await fetch(apiUrl + '/upload', {method: 'POST', body: fd})
+    const apiKey = localStorage.getItem('orgchart_admin_api_key')
+    const headers = apiKey ? { 'X-API-Key': apiKey } : undefined
+    const res = await fetch(apiUrl + '/upload', {method: 'POST', body: fd, headers})
     const j = await res.json()
     setMsg(JSON.stringify(j))
   }
