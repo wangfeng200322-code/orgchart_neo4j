@@ -3,7 +3,7 @@ import boto3
 import io
 import csv
 from typing import List, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -94,6 +94,29 @@ def get_neo4j_credentials():
             detail="Could not retrieve database credentials"
         )
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=8),
+    reraise=True
+)
+def get_admin_api_key():
+    ssm = boto3.client('ssm')
+    try:
+        logger.info("Retrieving admin API key from SSM")
+        parameter = ssm.get_parameter(
+            Name='orgchart_admin_api_key',
+            WithDecryption=True
+        )
+        api_key = parameter['Parameter']['Value']
+        logger.info("Successfully retrieved admin API key")
+        return api_key
+    except Exception as e:
+        logger.error(f"Error reading admin API key from SSM: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Could not retrieve admin API key"
+        )
+
 class Neo4jConnection:
     def __init__(self):
         self.driver = None
@@ -135,6 +158,16 @@ async def shutdown():
     logger.info("Application shutting down")
     neo4j_conn.close()
 
+async def require_admin(x_api_key: Optional[str] = Header(None, alias='X-API-Key')):
+    if not x_api_key:
+        logger.warning("Missing X-API-Key header for admin operation")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key")
+    expected = get_admin_api_key()
+    if x_api_key != expected:
+        logger.warning("Invalid admin API key provided")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid API key")
+    return True
+
 @app.get('/health', response_model=HealthResponse, tags=["health"],
          summary="Check API and database health",
          description="Returns the health status of the API and Neo4j database connection.")
@@ -170,7 +203,7 @@ async def health_check():
 @app.post('/upload', response_model=UploadResponse, tags=["employees"],
           summary="Upload employee data CSV",
           description="Upload a CSV file containing employee information. The file should include columns for First Name, Last Name, Email, Phone, Address, and Manager Name.")
-async def upload_csv(file: UploadFile = File(...)):
+async def upload_csv(file: UploadFile = File(...), authorized: bool = Depends(require_admin)):
     if not file.filename.endswith('.csv'):
         logger.warning(f"Invalid file type attempted: {file.filename}")
         raise HTTPException(
