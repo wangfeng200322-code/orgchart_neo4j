@@ -92,7 +92,8 @@ def get_neo4j_credentials():
         return (
             os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
             os.getenv('NEO4J_USER', 'neo4j'),
-            os.getenv('NEO4J_PASSWORD', 'password')
+            os.getenv('NEO4J_PASSWORD', 'password'),
+            os.getenv('NEO4J_REGION', 'region')
         )
     else:
         # Original AWS SSM implementation
@@ -108,7 +109,8 @@ def get_neo4j_credentials():
             return (
                 credentials.get('NEO4J_URI'),
                 credentials.get('NEO4J_USER'),
-                credentials.get('NEO4J_PASSWORD')
+                credentials.get('NEO4J_PASSWORD'),
+                credentials.get('NEO4J_REGION')
             )
         except Exception as e:
             logger.error(f"Error reading SSM parameter: {str(e)}")
@@ -157,8 +159,8 @@ class Neo4jConnection:
         if not self.driver:
             try:
                 logger.info("Initializing Neo4j connection")
-                uri, user, password = get_neo4j_credentials()
-                self.driver = GraphDatabase.driver(uri, auth=(user, password))
+                uri, user, password, region = get_neo4j_credentials()
+                self.driver = GraphDatabase.driver(uri, auth=(user, password), routing_context ={"region": region} if region else {})
                 logger.info("Successfully connected to Neo4j")
             except Exception as e:
                 logger.error(f"Failed to connect to Neo4j: {str(e)}")
