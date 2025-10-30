@@ -78,7 +78,7 @@ class EmployeeResponse(BaseModel):
     links: List[Link] = Field(..., description="List of relationships between employees")
 
 @retry(
-    stop=stop_after_attempt(3),
+    stop=stop_after_attempt(1),
     wait=wait_exponential(multiplier=1, min=4, max=10),
     reraise=True
 )
@@ -101,7 +101,7 @@ def get_neo4j_credentials():
         try:
             logger.info("Attempting to retrieve Neo4j credentials from SSM")
             parameter = ssm.get_parameter(
-                Name='neo4j_connection_json_string',
+                Name='neo4j_connection_string',
                 WithDecryption=True
             )
             credentials = json.loads(parameter['Parameter']['Value'])
