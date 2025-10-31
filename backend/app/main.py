@@ -4,6 +4,7 @@ import io
 import csv
 import os
 from typing import List, Optional
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query, status, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,6 +19,16 @@ logger.remove()  # Remove default handler
 logger.add(sys.stdout, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | {message}")
 logger.add("app.log", rotation="500 MB", format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}")
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Application starting up")
+    neo4j_conn.connect()  # Verify connection at startup
+    yield
+    # Shutdown
+    logger.info("Application shutting down")
+    neo4j_conn.close()
+
 app = FastAPI(
     title="OrgChart API",
     description="API for managing organizational chart data using Neo4j",
@@ -27,7 +38,8 @@ app = FastAPI(
     openapi_tags=[
         {"name": "health", "description": "Health check endpoints"},
         {"name": "employees", "description": "Employee data management endpoints"},
-    ]
+    ],
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -38,40 +50,31 @@ app.add_middleware(
 )
 
 class HealthResponse(BaseModel):
-    status: str = Field(..., description="Current health status of the API")
-    database: dict = Field(..., description="Neo4j database connection details")
-
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "status": "healthy",
-                "database": {
-                    "connected": True,
-                    "name": "neo4j",
-                    "version": "5.7.0",
-                    "edition": "aura"
-                }
-            }]
-        }
-    }
+    status: str = Field(..., description="Current health status of the API", json_schema_extra={"example": "healthy"})
+    database: dict = Field(..., description="Neo4j database connection details", json_schema_extra={"example": {
+        "connected": True,
+        "name": "neo4j",
+        "version": "5.7.0",
+        "edition": "aura"
+    }})
 
 class UploadResponse(BaseModel):
-    status: str = Field(..., example="ok", description="Upload operation status")
-    imported: int = Field(..., example=5, description="Number of employees imported")
+    status: str = Field(..., description="Upload operation status", json_schema_extra={"example": "ok"})
+    imported: int = Field(..., description="Number of employees imported", json_schema_extra={"example": 5})
 
 class Node(BaseModel):
-    id: int = Field(..., example=1234, description="Neo4j node ID")
-    fullName: str = Field(..., example="John Doe", description="Employee's full name")
-    firstName: Optional[str] = Field(None, example="John", description="Employee's first name")
-    lastName: Optional[str] = Field(None, example="Doe", description="Employee's last name")
-    email: Optional[str] = Field(None, example="john.doe@example.com", description="Employee's email")
-    phone: Optional[str] = Field(None, example="+1-555-123-4567", description="Employee's phone number")
-    address: Optional[str] = Field(None, example="123 Main St", description="Employee's address")
+    id: int = Field(..., description="Neo4j node ID", json_schema_extra={"example": 1234})
+    fullName: str = Field(..., description="Employee's full name", json_schema_extra={"example": "John Doe"})
+    firstName: Optional[str] = Field(None, description="Employee's first name", json_schema_extra={"example": "John"})
+    lastName: Optional[str] = Field(None, description="Employee's last name", json_schema_extra={"example": "Doe"})
+    email: Optional[str] = Field(None, description="Employee's email", json_schema_extra={"example": "john.doe@example.com"})
+    phone: Optional[str] = Field(None, description="Employee's phone number", json_schema_extra={"example": "+1-555-123-4567"})
+    address: Optional[str] = Field(None, description="Employee's address", json_schema_extra={"example": "123 Main St"})
 
 class Link(BaseModel):
-    from_id: int = Field(..., example=1234, description="Source node ID")
-    to_id: int = Field(..., example=5678, description="Target node ID")
-    type: str = Field(..., example="MANAGES", description="Relationship type")
+    from_id: int = Field(..., description="Source node ID", json_schema_extra={"example": 1234})
+    to_id: int = Field(..., description="Target node ID", json_schema_extra={"example": 5678})
+    type: str = Field(..., description="Relationship type", json_schema_extra={"example": "MANAGES"})
 
 class EmployeeResponse(BaseModel):
     nodes: List[Node] = Field(..., description="List of employee nodes")
@@ -179,16 +182,6 @@ class Neo4jConnection:
         return self.driver
 
 neo4j_conn = Neo4jConnection()
-
-@app.on_event("startup")
-async def startup():
-    logger.info("Application starting up")
-    neo4j_conn.connect()  # Verify connection at startup
-
-@app.on_event("shutdown")
-async def shutdown():
-    logger.info("Application shutting down")
-    neo4j_conn.close()
 
 async def require_admin(x_api_key: Optional[str] = Header(None, alias='X-API-Key')):
     if not x_api_key:
