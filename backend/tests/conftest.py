@@ -20,7 +20,7 @@ def mock_neo4j_credentials():
     }
     
     def get_parameter_side_effect(Name, WithDecryption=True):
-        if Name == 'neo4j_connection_json_string':
+        if Name == 'neo4j_connection_string':
             return {'Parameter': {'Value': json.dumps(credentials)}}
         if Name == 'orgchart_admin_api_key':
             return {'Parameter': {'Value': 'test-admin-key'}}
