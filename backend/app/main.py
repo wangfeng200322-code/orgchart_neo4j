@@ -258,7 +258,8 @@ async def upload_csv(file: UploadFile = File(...), authorized: bool = Depends(re
                 email = row.get('Email') or row.get('email') or ''
                 phone = row.get('Phone') or row.get('phone') or ''
                 address = row.get('Address') or row.get('address') or ''
-                manager = row.get('Manager Name') or row.get('Manager') or ''
+                manager = row.get('Manager Name') or row.get('Manager') or row.get('manager_name') or ''
+                manager_email = row.get('manager_email') or ''
                 
                 logger.debug(f"Processing employee: {full}")
                 
@@ -270,7 +271,15 @@ async def upload_csv(file: UploadFile = File(...), authorized: bool = Depends(re
                 )
                 
                 # Create manager node and relationship
-                if manager:
+                # Use manager_email if available, otherwise fall back to manager name
+                if manager_email:
+                    session.run(
+                        "MERGE (m:Employee {email: $managerEmail}) "
+                        "MERGE (e2:Employee {email: $email2}) "
+                        "MERGE (m)-[:MANAGES]->(e2)",
+                        managerEmail=manager_email, email2=email if email else full
+                    )
+                elif manager:
                     session.run(
                         "MERGE (m:Employee {fullName: $managerFull}) "
                         "MERGE (e2:Employee {email: $email2}) "

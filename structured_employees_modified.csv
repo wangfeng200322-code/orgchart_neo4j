@@ -1,0 +1,41 @@
+first_name,last_name,email,phone,address,manager_name,manager_email
+Robert,Johnson,robert.johnson@company.com,555-0001,1000 Corporate HQ,,
+Jennifer,Smith,jennifer.smith@company.com,555-0002,1001 Executive Row,Robert Johnson,robert.johnson@company.com
+Michael,Brown,michael.brown@company.com,555-0003,1002 Executive Row,Robert Johnson,robert.johnson@company.com
+Sarah,Davis,sarah.davis@company.com,555-0004,1003 Executive Row,Robert Johnson,robert.johnson@company.com
+David,Wilson,david.wilson@company.com,555-0005,1004 Executive Row,Robert Johnson,robert.johnson@company.com
+Lisa,Taylor,lisa.taylor@company.com,555-0006,1005 Executive Row,Robert Johnson,robert.johnson@company.com
+James,Anderson,james.anderson@company.com,555-0007,1006 Executive Row,Robert Johnson,robert.johnson@company.com
+Patricia,Moore,patricia.moore@company.com,555-0008,1007 Executive Row,Robert Johnson,robert.johnson@company.com
+Charles,Thomas,charles.thomas@company.com,555-0009,1008 Executive Row,Robert Johnson,robert.johnson@company.com
+Linda,Jackson,linda.jackson@company.com,555-0100,1009 Executive Row,Robert Johnson,robert.johnson@company.com
+
+Jennifer,Smith,jennifer.smith@company.com,555-0101,1100 Management Blvd,, 
+Matthew,Williams,matthew.williams@company.com,555-0102,1101 Team Street,Jennifer Smith,jennifer.smith@company.com
+Christopher,Brown,christopher.brown@company.com,555-0103,1102 Team Street,Jennifer Smith,jennifer.smith@company.com
+Amanda,Davis,amanda.davis@company.com,555-0104,1103 Team Street,Jennifer Smith,jennifer.smith@company.com
+Daniel,Miller,daniel.miller@company.com,555-0105,1104 Team Street,Jennifer Smith,jennifer.smith@company.com
+Jessica,Wilson,jessica.wilson@company.com,555-0106,1105 Team Street,Jennifer Smith,jennifer.smith@company.com
+Joshua,Moore,joshua.moore@company.com,555-0107,1106 Team Street,Jennifer Smith,jennifer.smith@company.com
+Ashley,Taylor,ashley.taylor@company.com,555-0108,1107 Team Street,Jennifer Smith,jennifer.smith@company.com
+James,Anderson,james.anderson2@company.com,555-0109,1108 Team Street,Jennifer Smith,jennifer.smith@company.com
+Brittany,Thomas,brittany.thomas@company.com,555-0110,1109 Team Street,Jennifer Smith,jennifer.smith@company.com
+Tyler,Jackson,tyler.jackson@company.com,555-0111,1110 Team Street,Jennifer Smith,jennifer.smith@company.com
+
+Michael,Brown,michael.brown@company.com,555-0201,1200 Management Blvd,, 
+John,White,john.white@company.com,555-0202,1201 Team Street,Michael Brown,michael.brown@company.com
+Emily,Harris,emily.harris@company.com,555-0203,1202 Team Street,Michael Brown,michael.brown@company.com
+Ryan,Clark,ryan.clark@company.com,555-0204,1203 Team Street,Michael Brown,michael.brown@company.com
+Lauren,Lewis,lauren.lewis@company.com,555-0205,1204 Team Street,Michael Brown,michael.brown@company.com
+Nicholas,Robinson,nicholas.robinson@company.com,555-0206,1205 Team Street,Michael Brown,michael.brown@company.com
+Megan,Walker,megan.walker@company.com,555-0207,1206 Team Street,Michael Brown,michael.brown@company.com
+Andrew,Hall,andrew.hall@company.com,555-0208,1207 Team Street,Michael Brown,michael.brown@company.com
+Stephanie,Allen,stephanie.allen@company.com,555-0209,1208 Team Street,Michael Brown,michael.brown@company.com
+Brandon,Young,brandon.young@company.com,555-0210,1209 Team Street,Michael Brown,michael.brown@company.com
+Victoria,Hernandez,victoria.hernandez@company.com,555-0211,1210 Team Street,Michael Brown,michael.brown@company.com
+
+Sarah,Davis,sarah.davis@company.com,555-0301,1300 Management Blvd,, 
+Joseph,King,joseph.king@company.com,555-0302,1301 Team Street,Sarah Davis,sarah.davis@company.com
+Morgan,Wright,morgan.wright@company.com,555-0303,1302 Team Street,Sarah Davis,sarah.davis@company.com
+Austin,Lopez,austin.lopez@company.com,555-0304,1303 Team Street,Sarah Davis,sarah.davis@company.com
+Hannah,Hill,hannah.hill@company.com,555-0305,1304 Team Street,Sarah Davis,sarah.davis@company.com
