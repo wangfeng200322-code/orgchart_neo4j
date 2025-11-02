@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "ssm_policy" {
           "ssm:GetParameter"
         ]
         Resource = [
-          "arn:aws:ssm:${var.region}:*:parameter/neo4j_connection_json_string",
+          "arn:aws:ssm:${var.region}:*:parameter/neo4j_connection_string",
           "arn:aws:ssm:${var.region}:*:parameter/orgchart_admin_api_key"
         ]
       }
