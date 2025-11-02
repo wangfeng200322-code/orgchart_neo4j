@@ -9,7 +9,8 @@ variable "instance_type" {
 }
 
 variable "key_name" {
-  type = "my_ec2_key_pair-2025"
+  type = string
+  default = "my_ec2_key_pair-2025"
 }
 
 variable "repo_url" {
