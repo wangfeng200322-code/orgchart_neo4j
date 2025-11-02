@@ -13,7 +13,7 @@
     "reactflow": "^11.11.4"
   },
   "devDependencies": {
-    "vite": "^4.5.0",
-    "@vitejs/plugin-react": "^4.2.1"
+    "vite": "^7.1.12",
+    "@vitejs/plugin-react": "^4.7.0"
   }
 }
