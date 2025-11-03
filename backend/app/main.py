@@ -99,7 +99,8 @@ def get_neo4j_credentials():
         )
     else:
         # Original AWS SSM implementation
-        ssm = boto3.client('ssm')
+        aws_region = os.getenv('AWS_REGION', 'eu-central-1')
+        ssm = boto3.client('ssm', region_name=aws_region)
         try:
             logger.info("Attempting to retrieve Neo4j credentials from SSM")
             parameter = ssm.get_parameter(
