@@ -299,12 +299,17 @@ def get_employee(name: str = Query(..., description='Full name of employee to se
     try:
         logger.info(f"Searching for employee: {name}")
         # Return nodes and links for the sub-tree under the employee
+        # Updated query to support any employee, whether they manage others or not
         query = (
-            "MATCH p=(e:Employee {fullName: $name})-[:MANAGES*0..]->(sub) "
-            "WITH COLLECT(nodes(p)) AS paths_nodes, COLLECT(relationships(p)) AS paths_rels "
-            "UNWIND paths_nodes AS nds UNWIND nds AS n WITH COLLECT(DISTINCT n) AS nodes, paths_rels "
-            "UNWIND paths_rels AS rls UNWIND rls AS r WITH nodes, COLLECT(DISTINCT r) AS rels "
-            "RETURN nodes, rels LIMIT 1"
+            "MATCH (e:Employee {fullName: $name}) "
+            "OPTIONAL MATCH p=(e)-[:MANAGES*0..]->(sub) "
+            "WITH COLLECT(nodes(p)) AS paths_nodes, COLLECT(relationships(p)) AS paths_rels, e "
+            "UNWIND paths_nodes AS nds UNWIND nds AS n WITH COLLECT(DISTINCT n) AS nodes, paths_rels, e "
+            "UNWIND paths_rels AS rls UNWIND rls AS r WITH nodes, COLLECT(DISTINCT r) AS rels, e "
+            "RETURN "
+            "CASE WHEN size(nodes) = 0 THEN [e] ELSE nodes END AS nodes, "
+            "rels "
+            "LIMIT 1"
         )
         
         driver = neo4j_conn.get_driver()
@@ -313,7 +318,12 @@ def get_employee(name: str = Query(..., description='Full name of employee to se
             record = result.single()
             
             if not record:
+                # Let's also check what employees exist in the database to help with debugging
                 logger.warning(f"No employee found with name: {name}")
+                all_employees_query = "MATCH (e:Employee) RETURN e.fullName AS fullName LIMIT 10"
+                all_employees_result = session.run(all_employees_query)
+                employee_names = [record["fullName"] for record in all_employees_result]
+                logger.info(f"Available employees: {employee_names}")
                 return {"nodes": [], "links": []}
                 
             nodes_raw = record['nodes'] or []

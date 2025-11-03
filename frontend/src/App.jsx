@@ -8,6 +8,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function App(){
   const [data, setData] = useState(null)
+  const [searchedName, setSearchedName] = useState('')
   
   // Function to transform the API response into a tree structure
   const transformData = (apiData) => {
@@ -40,8 +41,9 @@ export default function App(){
     return nodeMap[apiData.nodes[0].id]
   }
   
-  const handleResult = (resultData) => {
+  const handleResult = (resultData, name) => {
     setData(transformData(resultData))
+    setSearchedName(name)
   }
 
   return (
@@ -51,7 +53,11 @@ export default function App(){
       <UploadForm apiUrl={API} />
       <hr />
       <SearchForm apiUrl={API} onResult={handleResult} />
-      {data ? (
+      {data === null && searchedName ? (
+        <div style={{ margin: '20px 0', color: '#666' }}>
+          No employee found with the name "{searchedName}". Please check the name and try again.
+        </div>
+      ) : data ? (
         <div>
           <h2>Org Chart</h2>
           <OrgChart data={data} />

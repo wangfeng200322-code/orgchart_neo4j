@@ -54,6 +54,26 @@ def test_get_employee_not_found(test_client, mock_neo4j_credentials, mock_neo4j_
     assert data["nodes"] == []
     assert data["links"] == []
 
+def test_get_non_manager_employee(test_client, mock_neo4j_credentials, mock_neo4j_driver):
+    mock_driver, mock_session = mock_neo4j_driver
+    
+    # Create mock node for employee who is not a manager
+    employee = create_mock_neo4j_node(1, fullName="Lisa Gray", email="lisa.gray@example.com")
+    
+    # Mock Neo4j query result - only the employee node, no relationships
+    mock_session.run.return_value.single.return_value = {
+        "nodes": [employee],
+        "rels": []
+    }
+    
+    response = test_client.get("/employee?name=Lisa%20Gray")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    
+    assert len(data["nodes"]) == 1
+    assert len(data["links"]) == 0
+    assert data["nodes"][0]["fullName"] == "Lisa Gray"
+
 def test_upload_csv_success(test_client, mock_neo4j_credentials, mock_neo4j_driver):
     mock_driver, mock_session = mock_neo4j_driver
     

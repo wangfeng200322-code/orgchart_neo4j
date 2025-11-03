@@ -9,7 +9,7 @@ export default function SearchForm({apiUrl, onResult}){
     setErr('')
     const res = await fetch(`${apiUrl}/employee?name=${encodeURIComponent(name)}`)
     const j = await res.json()
-    onResult(j)
+    onResult(j, name)
   }
   return (
     <div>
