@@ -15,7 +15,29 @@ export default function App(){
       return null
     }
     
-    return apiData
+    // Create a map of all nodes by their ID
+    const nodeMap = {}
+    apiData.nodes.forEach(node => {
+      nodeMap[node.id] = {
+        ...node,
+        children: []
+      }
+    })
+    
+    // Build the tree structure by connecting nodes based on links
+    apiData.links.forEach(link => {
+      const parent = nodeMap[link.from_id]
+      const child = nodeMap[link.to_id]
+      
+      if (parent && child) {
+        parent.children.push(child)
+      }
+    })
+    
+    // Find the root node (the one we searched for)
+    // It should be the first node in the array or we can find it by checking
+    // which node doesn't have any incoming links
+    return nodeMap[apiData.nodes[0].id]
   }
   
   const handleResult = (resultData) => {
